@@ -65,6 +65,52 @@ export interface LabTest {
 }
 
 export type LinkType = 'PUBLIC' | 'UNLISTED' | 'PASSWORD' | 'PRIVATE';
+export type VideoStatus = 'RECORDING' | 'FINALIZING' | 'READY' | 'FAILED' | 'DELETED';
+
+export interface ShareMetadata {
+  title: string;
+  creatorName: string;
+  creatorPublicId: string;
+  visibility: LinkType;
+  status: VideoStatus;
+  durationUs: string;
+  needsPassword: boolean;
+  isOwner: boolean;
+  storageConnected: boolean;
+}
+
+export interface VideoListItem {
+  id: string;
+  title: string;
+  durationUs: string;
+  createdAt: string;
+  visibility: LinkType;
+  status: VideoStatus;
+  shareUrl: string;
+}
+
+export const getShareMetadata = (shareId: string): Promise<ShareMetadata> =>
+  apiFetch(`/api/share/${shareId}`);
+
+export const unlockShare = (shareId: string, password: string): Promise<{ ok: boolean }> =>
+  apiFetch(`/api/share/${shareId}/unlock`, { method: 'POST', body: JSON.stringify({ password }) });
+
+export const playlistUrl = (shareId: string): string => `/api/share/${shareId}/playlist.m3u8`;
+
+export const listMyVideos = (): Promise<{ videos: VideoListItem[] }> => apiFetch('/api/videos');
+
+export const patchVideo = (
+  id: string,
+  body: { title?: string; visibility?: LinkType; password?: string | null },
+): Promise<VideoListItem> => apiFetch(`/api/videos/${id}`, { method: 'PATCH', body: JSON.stringify(body) });
+
+export const deleteVideo = (id: string): Promise<void> =>
+  apiFetch(`/api/videos/${id}`, { method: 'DELETE' });
+
+export const getCreatorVideos = (
+  publicId: string,
+): Promise<{ creator: { name: string; publicId: string }; videos: VideoListItem[] }> =>
+  apiFetch(`/api/creators/${publicId}/videos`);
 
 export interface CreateVideoResponse {
   videoId: string;

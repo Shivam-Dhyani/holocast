@@ -1,7 +1,16 @@
-import { Stub } from '../../_components/Stub';
+import type { Metadata } from 'next';
+
+import { CreatorClient } from './CreatorClient';
+
+// Public creator page is indexable (FR-SHR-03).
+export const metadata: Metadata = { robots: { index: true, follow: true } };
+
 export default async function CreatorPage({ params }: { params: Promise<{ creatorPublicId: string }> }) {
   const { creatorPublicId } = await params;
-  return <Stub title="Creator" milestone="M7 (public creator page)">
-    <p style={{ color: '#5c6676', fontSize: 13 }}>creator: {creatorPublicId}</p>
-  </Stub>;
+  return (
+    <main style={{ maxWidth: 820, margin: '0 auto', padding: '40px 16px' }}>
+      <a href="/" style={{ color: '#8ab4ff', textDecoration: 'none' }}>← Holocast</a>
+      <div style={{ marginTop: 20 }}><CreatorClient publicId={creatorPublicId} /></div>
+    </main>
+  );
 }
