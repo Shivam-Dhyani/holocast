@@ -12,6 +12,7 @@ import { pinoHttp } from 'pino-http';
 
 import { attachUser, requireSameOrigin } from './auth/middleware.js';
 import { authRouter } from './auth/router.js';
+import { labRouter } from './lab/router.js';
 import { storageRouter } from './storage-connect/router.js';
 import { config } from './config.js';
 import { prisma } from './db.js';
@@ -55,6 +56,7 @@ export function createApp(): Express {
 
   app.use('/api', authRouter);
   app.use('/api/storage', storageRouter);
+  app.use('/api/lab', labRouter);
 
   const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     logger.error({ err }, 'unhandled error');

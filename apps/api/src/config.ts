@@ -48,6 +48,9 @@ const EnvSchema = z.object({
 
   WHISPER_BIN: z.string().optional(),
   WHISPER_MODEL: z.string().optional(),
+
+  /** Optional bearer token that lets CLI tools post Lab results (T-INF-03/T-PLY-05). */
+  LAB_CLI_TOKEN: z.string().optional(),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
