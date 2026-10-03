@@ -12,6 +12,14 @@ of each section.
 - **TypeScript pinned to 5.9.3** across the monorepo — npm `latest` is the 7.x native
   port which current build tooling (tsup/rollup-plugin-dts, and others) doesn't yet
   support. Same reasoning as the package repo.
+- **Prisma pinned to 6.19.3** (CLI + `@prisma/client`). npm `latest` resolves the
+  `prisma` CLI to an 8.0.0-rc and `@prisma/client` to 7.x — a mismatched, bleeding-edge
+  pair, and Prisma 7+ overhauls the generator the TDD schema uses
+  (`provider = "prisma-client-js"`, default client output). 6.19.3 is the latest stable
+  line matching the TDD. Revisit when 7/8 are stable and the schema is migrated.
+- **Next.js 16.3 / React 19.3** for `apps/web`; **Express 5.2** for `apps/api`.
+- `pnpm -r build` order: `@holocast/shared` builds before `apps/api` (workspace dep);
+  `@shivam-dhyani/unified-storage` is linked from the sibling repo and pre-built.
 
 ## API / behavior deviations
 (none yet — M2 skeleton)

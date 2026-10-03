@@ -1,0 +1,13 @@
+# Holocast reverse proxy (TDD §3.3, §4.5). One origin for web + API so the
+# session cookie is first-party. Caddy obtains HTTPS automatically (ports 80/443
+# must be open). Set HOLOCAST_DOMAIN in the environment.
+{$HOLOCAST_DOMAIN} {
+	@api path /api/*
+	handle @api {
+		reverse_proxy 127.0.0.1:4000
+	}
+	handle {
+		encode zstd gzip
+		reverse_proxy 127.0.0.1:3000
+	}
+}

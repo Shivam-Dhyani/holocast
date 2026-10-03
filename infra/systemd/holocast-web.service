@@ -1,0 +1,15 @@
+[Unit]
+Description=Holocast web (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+User=holocast
+WorkingDirectory=/opt/holocast/apps/web
+EnvironmentFile=/etc/holocast/holocast.env
+ExecStart=/usr/bin/corepack pnpm start
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
