@@ -13,3 +13,7 @@ coverage/
 apps/api/src/generated/
 # Local spool/data during dev
 .spool/
+
+# Next.js / TS build artifacts
+next-env.d.ts
+*.tsbuildinfo
