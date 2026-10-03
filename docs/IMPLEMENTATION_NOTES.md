@@ -78,6 +78,22 @@ Verified mediabunny **1.61.0** against the TDD §10.4 requirement before coding:
 - Codec support probed with mediabunny `canEncodeVideo('avc')` /
   `canEncodeAudio('aac'|'opus')` plus WebCodecs `VideoEncoder.isConfigSupported`.
 
+## M6 ingest / packer
+
+- **BullMQ 6.3** over local Redis; queues (`pack-upload`, `finalize`, + M7 stubs)
+  are lazily constructed with dedicated `maxRetriesPerRequest: null` connections so
+  the API boots without Redis (health).
+- **argon2id via `@node-rs/argon2`** (prebuilt binaries, no node-gyp) rather than the
+  `argon2` package, to avoid a native build in the container. Same algorithm the TDD
+  names (FR-SHR-05); used at video-creation time for PASSWORD links.
+- **Segment PUT** uses `express.raw({type:'application/octet-stream', limit:'8mb'})`
+  per route (init capped to 1 MB logically); global `express.json` ignores octet
+  streams. Idempotent by sha256; spool writes are temp-then-rename (atomic).
+- **finalize job** long-polls (5 s, cap 24 h) for segments then packs then sets
+  READY, as TDD §11.3 specifies; it runs in the worker (concurrency 2).
+- Pack-upload maps `ACCESS_LOST` → Pack FAILED + channel ERROR (spool kept);
+  other errors (FLOOD_WAIT) rethrow for BullMQ retry.
+
 ## Unknowns kept behind interfaces (TDD §17)
 - `BotEventSource` (U-03): botapi vs mtproto membership events — selected by
   `BOT_EVENT_SOURCE`.

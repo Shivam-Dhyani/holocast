@@ -6,6 +6,7 @@
 
 import { config } from './config.js';
 import { logger } from './logger.js';
+import { startIngestWorkers } from './ingest/packer.js';
 import { storageConfigured } from './storage.js';
 import { handleMembershipEvent } from './storage-connect/linker.js';
 import { createPrismaLinkerDeps } from './storage-connect/linker-deps.js';
@@ -17,6 +18,9 @@ async function main(): Promise<void> {
     await new Promise(() => {}); // stay alive so systemd doesn't flap
     return;
   }
+
+  startIngestWorkers();
+  logger.info('ingest workers started (pack-upload, finalize)');
 
   const deps = createPrismaLinkerDeps();
   const source = createBotEventSource();
