@@ -22,7 +22,22 @@ of each section.
   `@shivam-dhyani/unified-storage` is linked from the sibling repo and pre-built.
 
 ## API / behavior deviations
-(none yet — M2 skeleton)
+
+- **Confirmation message & bot-leave go through the Bot API** (`sendMessage` /
+  `leaveChat`), not the `unified-storage` Telegram adapter. The storage adapter is
+  document-only by design; adding text-messaging to it would widen the library's
+  scope. The Bot API path needs only the bot token and works for both event sources.
+- **`resolveAccessHash` (U-04)** calls the storage adapter's `attachChannel`
+  (`channels.getChannels` with access hash 0). If it fails the channel is marked
+  ERROR and the user sees "storage disconnected" — exactly the signal T-ONB-04
+  measures.
+- **MTProto event source is experimental (U-03).** It runs a second bot MTProto
+  connection with its own session file and parses raw `UpdateChannelParticipant`;
+  the access hash and whether it coexists with the storage client are what T-ONB-03
+  measures. The default is `botapi` (long-poll `my_chat_member`), which is fully
+  implemented and needs no second client.
+- **Playback cache invalidation on disconnect is a no-op until M7** (caches don't
+  exist yet); the hook is in place.
 
 ## Unknowns kept behind interfaces (TDD §17)
 - `BotEventSource` (U-03): botapi vs mtproto membership events — selected by
