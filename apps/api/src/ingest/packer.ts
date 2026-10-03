@@ -10,10 +10,20 @@ import { Worker } from 'bullmq';
 
 import { prisma } from '../db.js';
 import { logger } from '../logger.js';
+import { INITIAL_CACHE_SEQS, isCacheEligible } from '../media/cache-policy.js';
+import { promoteSegment, removeVideoFromR2 } from '../media/r2cache.js';
 import { getEncryptedTelegram } from '../storage.js';
-import { makeQueueConnection, QUEUE, type FinalizeJob, type PackUploadJob } from '../queues.js';
+import {
+  getQueue,
+  makeQueueConnection,
+  QUEUE,
+  type DeleteVideoJob,
+  type FinalizeJob,
+  type PackUploadJob,
+  type R2PromoteJob,
+} from '../queues.js';
 import { concatSegments, packCaption, packNoForSeq, packRange } from './packing.js';
-import { deleteSpoolSegment, readSpoolSegment } from './spool.js';
+import { deleteSpoolSegment, deleteVideoSpool, readSpoolSegment } from './spool.js';
 
 const POLL_MS = 5000;
 const MAX_FINALIZE_WAIT_MS = 24 * 60 * 60 * 1000;
@@ -125,21 +135,51 @@ export async function processFinalize(job: { data: FinalizeJob }): Promise<void>
     await sleep(POLL_MS);
   }
 
-  await prisma.video.update({ where: { id: videoId }, data: { status: 'READY', finalizedAt: new Date() } });
+  const video = await prisma.video.update({
+    where: { id: videoId },
+    data: { status: 'READY', finalizedAt: new Date() },
+  });
   logger.info({ videoId }, 'video finalized READY');
+
+  // Cache segments 1–3 for fast start (public/unlisted only, §11.6).
+  if (isCacheEligible(video.visibility)) {
+    for (const seq of INITIAL_CACHE_SEQS) {
+      await getQueue(QUEUE.r2Promote).add('r2-promote', { videoId, seq } satisfies R2PromoteJob);
+    }
+  }
+}
+
+export async function processR2Promote(job: { data: R2PromoteJob }): Promise<void> {
+  await promoteSegment(job.data.videoId, job.data.seq);
+}
+
+/** delete-video job (FR-VID-03, §11.7): remove packs from Telegram, R2 entries, spool. */
+export async function processDeleteVideo(job: { data: DeleteVideoJob }): Promise<void> {
+  const { videoId } = job.data;
+  const video = await prisma.video.findUnique({ where: { id: videoId }, include: { channel: true } });
+  if (!video) return;
+  const packs = await prisma.pack.findMany({ where: { videoId, status: 'STORED' } });
+  for (const pack of packs) {
+    if (!pack.storageRef) continue;
+    try {
+      await getEncryptedTelegram('worker').delete(pack.storageRef as unknown as ObjectRef);
+    } catch (err) {
+      logger.warn({ err, videoId, packNo: pack.packNo }, 'delete pack failed');
+    }
+  }
+  await removeVideoFromR2(videoId).catch(() => {});
+  await deleteVideoSpool(videoId).catch(() => {});
 }
 
 export function startIngestWorkers(): Worker[] {
-  const packWorker = new Worker(QUEUE.packUpload, (job) => processPackUpload(job), {
-    connection: makeQueueConnection(),
-    concurrency: 2,
-  });
-  const finalizeWorker = new Worker(QUEUE.finalize, (job) => processFinalize(job), {
-    connection: makeQueueConnection(),
-    concurrency: 2,
-  });
-  for (const w of [packWorker, finalizeWorker]) {
+  const workers = [
+    new Worker(QUEUE.packUpload, (job) => processPackUpload(job), { connection: makeQueueConnection(), concurrency: 2 }),
+    new Worker(QUEUE.finalize, (job) => processFinalize(job), { connection: makeQueueConnection(), concurrency: 2 }),
+    new Worker(QUEUE.r2Promote, (job) => processR2Promote(job), { connection: makeQueueConnection(), concurrency: 2 }),
+    new Worker(QUEUE.deleteVideo, (job) => processDeleteVideo(job), { connection: makeQueueConnection(), concurrency: 2 }),
+  ];
+  for (const w of workers) {
     w.on('failed', (job, err) => logger.warn({ queue: w.name, jobId: job?.id, err }, 'job failed'));
   }
-  return [packWorker, finalizeWorker];
+  return workers;
 }

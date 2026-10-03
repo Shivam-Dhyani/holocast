@@ -43,3 +43,10 @@ export interface FinalizeJob {
   expectedSegments: number;
   durationUs: string;
 }
+export interface R2PromoteJob {
+  videoId: string;
+  seq: number;
+}
+export interface DeleteVideoJob {
+  videoId: string;
+}
