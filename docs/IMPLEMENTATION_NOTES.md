@@ -39,6 +39,25 @@ of each section.
 - **Playback cache invalidation on disconnect is a no-op until M7** (caches don't
   exist yet); the hook is in place.
 
+## M4 Lab notes
+
+- **Server tests run in-process**, not via BullMQ (which arrives in M6). The Lab
+  creates a RUNNING LabRun and executes in the background; the web page polls
+  `GET /api/lab/tests`. Each test builds its own metrics-instrumented encrypted
+  Telegram adapter (session `lab.session`) against the admin's CONNECTED channel.
+- **T-TG-06 (ref-refresh cost)** is approximated by uploading N small packs and
+  timing the first read of each (first read triggers one `channels.getMessages`,
+  surfaced via the `refresh_ref` metric), rather than bypassing the 10-min doc
+  cache directly.
+- **T-TG-07 (stale ref ≥24h)** records a single-run recovery check; the real 24h
+  arm is run by the owner across two days (TDD §13.3). It is INFO either way.
+- **Lab CLI token**: `POST /api/lab/results` accepts an admin session or a bearer
+  equal to `LAB_CLI_TOKEN` (env). The hashed-token-in-DB flow (TDD §13.1) is
+  deferred to M8 when the CLI tests (T-PLY-05, T-INF-03) are wired.
+- Report export (`report.md`/`.json`) and the browser/manual Lab tabs are M8; M4
+  ships the catalog + server-test run + results storage so the owner can run the
+  Telegram tests and see PASS/FAIL (M4 done-when).
+
 ## Unknowns kept behind interfaces (TDD §17)
 - `BotEventSource` (U-03): botapi vs mtproto membership events — selected by
   `BOT_EVENT_SOURCE`.

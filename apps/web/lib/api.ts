@@ -50,3 +50,21 @@ export const disconnectStorage = (): Promise<StorageStatus> =>
   apiFetch('/api/storage/disconnect', { method: 'POST' });
 
 export const logout = (): Promise<void> => apiFetch('/api/auth/logout', { method: 'POST' });
+
+export interface LabTest {
+  id: string;
+  name: string;
+  runner: 'SERVER' | 'BROWSER' | 'CLI' | 'MANUAL' | 'AUTOTEST';
+  thresholdText: string;
+  serverRunnable: boolean;
+  latestStatus: 'PASS' | 'FAIL' | 'BLOCKED' | 'INFO' | 'NOT_RUN' | 'RUNNING';
+  latestMetrics: Record<string, unknown> | null;
+  notes: string | null;
+  runCount: number;
+  lastRunAt: string | null;
+}
+
+export const getLabTests = (): Promise<{ tests: LabTest[] }> => apiFetch('/api/lab/tests');
+
+export const runLabTest = (id: string): Promise<{ runId: string; status: string }> =>
+  apiFetch(`/api/lab/run/${id}`, { method: 'POST' });
