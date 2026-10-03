@@ -15,6 +15,7 @@ import { authRouter } from './auth/router.js';
 import { ingestRouter } from './ingest/router.js';
 import { labRouter } from './lab/router.js';
 import { mediaRouter } from './media/router.js';
+import { creatorsRouter } from './share/creators.js';
 import { shareRouter } from './share/router.js';
 import { storageRouter } from './storage-connect/router.js';
 import { config } from './config.js';
@@ -62,6 +63,7 @@ export function createApp(): Express {
   app.use('/api/videos', ingestRouter);
   app.use('/api/share', shareRouter);
   app.use('/api/media', mediaRouter);
+  app.use('/api/creators', creatorsRouter);
   app.use('/api/lab', labRouter);
 
   const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {

@@ -3,20 +3,39 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 
 import { hash as argon2Hash } from '@node-rs/argon2';
-import { CreateVideoRequest, FinalizeRequest } from '@holocast/shared';
+import { CreateVideoRequest, FinalizeRequest, PatchVideoRequest } from '@holocast/shared';
+import type { Video } from '@prisma/client';
 import { Router, raw } from 'express';
 import type { Request, Response } from 'express';
-import { nanoid } from 'nanoid';
 
 import { requireAuth } from '../auth/middleware.js';
 import { toBytes } from '../bytes.js';
 import { config } from '../config.js';
 import { prisma } from '../db.js';
 import { newId, newShareId, newSecretToken } from '../ids.js';
-import { getQueue, QUEUE, type FinalizeJob, type PackUploadJob } from '../queues.js';
-import { encryptShareId, shareIdHash } from '../share/shareid.js';
+import { removeVideoFromR2 } from '../media/r2cache.js';
+import { getQueue, QUEUE, type DeleteVideoJob, type FinalizeJob, type PackUploadJob } from '../queues.js';
+import { decryptShareId, encryptShareId, shareIdHash } from '../share/shareid.js';
 import { isFullPackComplete, packNoForSeq, packRange } from './packing.js';
 import { writeSpoolSegment } from './spool.js';
+
+export function toVideoListItem(v: Video) {
+  let shareUrl = '';
+  try {
+    shareUrl = `${config.PUBLIC_BASE_URL}/v/${decryptShareId(v.shareIdEnc)}`;
+  } catch {
+    /* leave blank if key unavailable */
+  }
+  return {
+    id: v.id,
+    title: v.title,
+    durationUs: v.durationUs.toString(),
+    createdAt: v.createdAt.toISOString(),
+    visibility: v.visibility,
+    status: v.status,
+    shareUrl,
+  };
+}
 
 const SEGMENT_TARGET_SECONDS = 4;
 const DEFAULT_BITRATE_BPS = 1_500_000;
@@ -111,6 +130,58 @@ ingestRouter.post('/', requireAuth, async (req: Request, res: Response) => {
     segmentTargetSeconds: SEGMENT_TARGET_SECONDS,
     bitrateBps,
   });
+});
+
+// GET /api/videos — list my videos, newest first (FR-VID-01).
+ingestRouter.get('/', requireAuth, async (req: Request, res: Response) => {
+  const videos = await prisma.video.findMany({
+    where: { ownerId: req.user!.id, status: { not: 'DELETED' } },
+    orderBy: { createdAt: 'desc' },
+  });
+  res.json({ videos: videos.map(toVideoListItem) });
+});
+
+// PATCH /api/videos/:id — rename / change link type / set-clear password (FR-VID-02, FR-SHR-07).
+ingestRouter.patch('/:id', requireAuth, async (req: Request, res: Response) => {
+  const video = await loadOwnedVideo(req, res, false);
+  if (!video) return;
+  const parsed = PatchVideoRequest.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ code: 'BAD_REQUEST', message: 'invalid changes' });
+    return;
+  }
+  const { title, visibility, password } = parsed.data;
+  const data: Record<string, unknown> = {};
+  if (title !== undefined) data.title = title;
+
+  const nextVisibility = visibility ?? video.visibility;
+  if (visibility !== undefined) data.visibility = visibility;
+
+  if (nextVisibility === 'PASSWORD') {
+    if (password) data.passwordHash = await argon2Hash(password);
+    else if (!video.passwordHash) {
+      res.status(400).json({ code: 'PASSWORD_REQUIRED', message: 'Set a password for a password-protected link.' });
+      return;
+    }
+  } else {
+    data.passwordHash = null; // clear password when leaving PASSWORD
+  }
+
+  const updated = await prisma.video.update({ where: { id: video.id }, data });
+  // Private/Password videos must never remain in the R2 cache (NFR-03).
+  if (nextVisibility === 'PASSWORD' || nextVisibility === 'PRIVATE') {
+    await removeVideoFromR2(video.id).catch(() => {});
+  }
+  res.json(toVideoListItem(updated));
+});
+
+// DELETE /api/videos/:id — soft-delete + async purge (FR-VID-03, §11.7).
+ingestRouter.delete('/:id', requireAuth, async (req: Request, res: Response) => {
+  const video = await loadOwnedVideo(req, res, false);
+  if (!video) return;
+  await prisma.video.update({ where: { id: video.id }, data: { status: 'DELETED', deletedAt: new Date() } });
+  await getQueue(QUEUE.deleteVideo).add('delete-video', { videoId: video.id } satisfies DeleteVideoJob);
+  res.status(204).end();
 });
 
 // PUT /api/videos/:id/init — store the fMP4 init segment once (idempotent).
