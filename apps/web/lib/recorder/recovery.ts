@@ -4,8 +4,8 @@
  * finalize with whatever segments exist.
  */
 
-import { listManifests, readInit, readSegment, deleteVideoStorage, type RecorderManifest } from './opfs-queue.js';
-import { createUploader } from './uploader.js';
+import { listManifests, readInit, readSegment, deleteVideoStorage, type RecorderManifest } from './opfs-queue';
+import { createUploader } from './uploader';
 
 export interface RecoveryResult {
   videoId: string;
@@ -36,7 +36,7 @@ async function resumeOne(manifest: RecorderManifest, apiBase: string): Promise<R
   let finalized = false;
   if (manifest.finalRequested) {
     await fetch(`${apiBase}/api/videos/${manifest.videoId}/finalize`, {
-      method: 'PUT',
+      method: 'POST',
       credentials: 'same-origin',
       headers: { 'content-type': 'application/json', 'x-upload-token': manifest.uploadToken },
       body: JSON.stringify({ expectedSegments: manifest.nextSeq - 1, durationUs: String(manifest.durationUs), recovered: true }),

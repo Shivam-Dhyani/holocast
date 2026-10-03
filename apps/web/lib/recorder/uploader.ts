@@ -4,7 +4,7 @@
  * the page is open. Segments are removed from OPFS only after the server acks.
  */
 
-import { deleteSegment, writeManifest, type RecorderManifest } from './opfs-queue.js';
+import { deleteSegment, writeManifest, type RecorderManifest } from './opfs-queue';
 
 /** Backoff schedule 1→2→4→8→16→30s (capped). Pure; unit-tested. */
 export function backoffMs(attempt: number): number {

@@ -1,8 +1,8 @@
 import { afterEach, describe, it, expect, vi } from 'vitest';
 
-import { backoffMs, createUploader, lagSeconds } from './uploader.js';
-import { aggregateDurations } from './stats.js';
-import type { RecorderManifest } from './opfs-queue.js';
+import { backoffMs, createUploader, lagSeconds } from './uploader';
+import { aggregateDurations } from './stats';
+import type { RecorderManifest } from './opfs-queue';
 
 function manifest(): RecorderManifest {
   return {

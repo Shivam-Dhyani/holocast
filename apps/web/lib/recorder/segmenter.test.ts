@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { createSegmenter, type MediaSegmentOut } from './segmenter.js';
+import { createSegmenter, type MediaSegmentOut } from './segmenter';
 
 // ---- minimal MP4 box builders ----
 function u32(n: number): number[] {

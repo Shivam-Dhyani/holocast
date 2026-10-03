@@ -20,8 +20,8 @@ import {
   SEGMENT_TARGET_SECONDS,
   TARGET_HEIGHT,
   TARGET_WIDTH,
-} from './constants.js';
-import { createSegmenter, type SegmenterCallbacks } from './segmenter.js';
+} from './constants';
+import { createSegmenter, type SegmenterCallbacks } from './segmenter';
 
 export interface EncoderHandle {
   /** finalize the MP4 and flush the last segment. */

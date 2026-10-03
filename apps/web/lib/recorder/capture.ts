@@ -5,7 +5,7 @@
  * AudioContext.
  */
 
-import { FPS, TARGET_HEIGHT, TARGET_WIDTH } from './constants.js';
+import { FPS, TARGET_HEIGHT, TARGET_WIDTH } from './constants';
 
 export interface CaptureResult {
   displayStream: MediaStream;

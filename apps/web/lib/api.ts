@@ -64,6 +64,35 @@ export interface LabTest {
   lastRunAt: string | null;
 }
 
+export type LinkType = 'PUBLIC' | 'UNLISTED' | 'PASSWORD' | 'PRIVATE';
+
+export interface CreateVideoResponse {
+  videoId: string;
+  shareUrl: string;
+  uploadToken: string;
+  segmentTargetSeconds: number;
+  bitrateBps: number;
+}
+
+export const createVideo = (body: {
+  title?: string;
+  visibility: LinkType;
+  password?: string;
+  bitrateBps?: number;
+}): Promise<CreateVideoResponse> =>
+  apiFetch('/api/videos', { method: 'POST', body: JSON.stringify(body) });
+
+export const finalizeVideo = (
+  videoId: string,
+  uploadToken: string,
+  body: { expectedSegments: number; durationUs: string; stats?: Record<string, unknown> },
+): Promise<unknown> =>
+  apiFetch(`/api/videos/${videoId}/finalize`, {
+    method: 'POST',
+    headers: { 'x-upload-token': uploadToken },
+    body: JSON.stringify(body),
+  });
+
 export const getLabTests = (): Promise<{ tests: LabTest[] }> => apiFetch('/api/lab/tests');
 
 export const runLabTest = (id: string): Promise<{ runId: string; status: string }> =>

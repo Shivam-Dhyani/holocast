@@ -6,7 +6,7 @@
 
 import { canEncodeAudio, canEncodeVideo } from 'mediabunny';
 
-import { DEFAULT_BITRATE_BPS, FPS, H264_CODECS, TARGET_HEIGHT, TARGET_WIDTH } from './constants.js';
+import { DEFAULT_BITRATE_BPS, FPS, H264_CODECS, TARGET_HEIGHT, TARGET_WIDTH } from './constants';
 
 export interface H264ConfigResult {
   codec: string;
