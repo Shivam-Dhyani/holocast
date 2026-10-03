@@ -18,6 +18,7 @@ import { mediaRouter } from './media/router.js';
 import { creatorsRouter } from './share/creators.js';
 import { shareRouter } from './share/router.js';
 import { storageRouter } from './storage-connect/router.js';
+import { defaultLimiter, mediaLimiter } from './rate-limit/limits.js';
 import { config } from './config.js';
 import { prisma } from './db.js';
 import { logger } from './logger.js';
@@ -58,13 +59,15 @@ export function createApp(): Express {
     });
   });
 
-  app.use('/api', authRouter);
-  app.use('/api/storage', storageRouter);
-  app.use('/api/videos', ingestRouter);
-  app.use('/api/share', shareRouter);
-  app.use('/api/media', mediaRouter);
-  app.use('/api/creators', creatorsRouter);
-  app.use('/api/lab', labRouter);
+  // Specific prefixes first (each with its own rate limiter); the catch-all auth
+  // router + default limiter go last so viewer media isn't double-limited (§11.8).
+  app.use('/api/videos', defaultLimiter, ingestRouter); // segment PUTs add segmentLimiter internally
+  app.use('/api/storage', defaultLimiter, storageRouter);
+  app.use('/api/share', mediaLimiter, shareRouter); // unlock adds unlockLimiter internally
+  app.use('/api/media', mediaLimiter, mediaRouter);
+  app.use('/api/creators', mediaLimiter, creatorsRouter);
+  app.use('/api/lab', defaultLimiter, labRouter);
+  app.use('/api', defaultLimiter, authRouter);
 
   const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     logger.error({ err }, 'unhandled error');

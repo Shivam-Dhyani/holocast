@@ -9,6 +9,7 @@ import { canWatch, needsPassword } from './access.js';
 import { buildPlaylist } from './playlist.js';
 import { shareIdHash } from './shareid.js';
 import { hasValidUnlock, setUnlockCookie, verifyPassword } from './unlock.js';
+import { unlockLimiter } from '../rate-limit/limits.js';
 
 export const shareRouter: Router = Router();
 
@@ -49,7 +50,7 @@ shareRouter.get('/:shareId', async (req: Request, res: Response) => {
 });
 
 // POST /api/share/:shareId/unlock — password gate (FR-SHR-05).
-shareRouter.post('/:shareId/unlock', async (req: Request, res: Response) => {
+shareRouter.post('/:shareId/unlock', unlockLimiter, async (req: Request, res: Response) => {
   const video = await loadByShareId(String(req.params.shareId));
   if (!video || video.visibility !== 'PASSWORD') {
     res.status(400).json({ code: 'NO_PASSWORD', message: 'This video is not password-protected.' });

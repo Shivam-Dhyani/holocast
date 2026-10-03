@@ -18,6 +18,7 @@ import { getQueue, QUEUE, type DeleteVideoJob, type FinalizeJob, type PackUpload
 import { decryptShareId, encryptShareId, shareIdHash } from '../share/shareid.js';
 import { isFullPackComplete, packNoForSeq, packRange } from './packing.js';
 import { writeSpoolSegment } from './spool.js';
+import { segmentLimiter } from '../rate-limit/limits.js';
 
 export function toVideoListItem(v: Video) {
   let shareUrl = '';
@@ -185,7 +186,7 @@ ingestRouter.delete('/:id', requireAuth, async (req: Request, res: Response) => 
 });
 
 // PUT /api/videos/:id/init — store the fMP4 init segment once (idempotent).
-ingestRouter.put('/:id/init', requireAuth, rawBody, async (req: Request, res: Response) => {
+ingestRouter.put('/:id/init', requireAuth, segmentLimiter, rawBody, async (req: Request, res: Response) => {
   const video = await loadOwnedVideo(req, res, true);
   if (!video) return;
   const body = req.body as Buffer;
@@ -212,7 +213,7 @@ ingestRouter.put('/:id/init', requireAuth, rawBody, async (req: Request, res: Re
 });
 
 // PUT /api/videos/:id/segments/:seq — spool a media segment (idempotent).
-ingestRouter.put('/:id/segments/:seq', requireAuth, rawBody, async (req: Request, res: Response) => {
+ingestRouter.put('/:id/segments/:seq', requireAuth, segmentLimiter, rawBody, async (req: Request, res: Response) => {
   const seq = Number(req.params.seq);
   if (!Number.isInteger(seq) || seq < 1 || seq > MAX_SEQ) {
     res.status(400).json({ code: 'BAD_SEQ', message: `seq must be 1..${MAX_SEQ}` });
