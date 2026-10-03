@@ -9,8 +9,22 @@ import { config, isAdmin } from '../config.js';
 import { prisma } from '../db.js';
 import { newId } from '../ids.js';
 import { latestRunByTest, toJson } from './runs.js';
+import { buildReportJson, buildReportMarkdown } from './report.js';
 import { startServerTest, SERVER_RUNNABLE } from './runner.js';
 import { evaluate, THRESHOLDS } from './thresholds.js';
+
+async function gatherReport() {
+  const [runs, manual] = await Promise.all([
+    prisma.labRun.findMany({ orderBy: { startedAt: 'desc' } }),
+    prisma.labManualAnswer.findMany(),
+  ]);
+  const header = {
+    'App version (git commit)': process.env.GIT_COMMIT ?? 'dev',
+    'unified-storage version': '0.1.0-alpha.0',
+    Domain: config.HOLOCAST_DOMAIN,
+  };
+  return buildReportJson(runs, manual, header);
+}
 
 export const labRouter: Router = Router();
 
@@ -112,6 +126,17 @@ labRouter.put('/manual/:questionId', requireAdmin, async (req: Request, res: Res
     update: { value: parsed.data.value },
   });
   res.status(204).end();
+});
+
+// GET /api/lab/report.json and report.md — Phase 1 export (FR-LAB-07).
+labRouter.get('/report.json', requireAdmin, async (_req: Request, res: Response) => {
+  res.json(await gatherReport());
+});
+labRouter.get('/report.md', requireAdmin, async (_req: Request, res: Response) => {
+  const md = buildReportMarkdown(await gatherReport());
+  res.setHeader('Content-Type', 'text/markdown; charset=utf-8');
+  res.setHeader('Content-Disposition', 'attachment; filename="PHASE1_RESULTS.md"');
+  res.send(md);
 });
 
 // POST /api/lab/cleanup — remove synthetic Lab data (FR-LAB-08).
