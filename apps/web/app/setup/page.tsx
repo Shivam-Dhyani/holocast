@@ -1,4 +1,13 @@
-import { Stub } from '../_components/Stub';
+import { SetupClient } from './SetupClient';
+
 export default function SetupPage() {
-  return <Stub title="Connect storage" milestone="M3 (connect-storage wizard)" />;
+  return (
+    <main style={{ maxWidth: 640, margin: '0 auto', padding: '48px 16px' }}>
+      <a href="/" style={{ color: '#8ab4ff', textDecoration: 'none' }}>
+        ← Holocast
+      </a>
+      <h1 style={{ fontSize: 28, marginTop: 24 }}>Connect storage</h1>
+      <SetupClient />
+    </main>
+  );
 }
