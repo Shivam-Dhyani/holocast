@@ -1,0 +1,208 @@
+// Holocast data model (TDD §9). Deletes of User/StorageChannel/Video/Pack/Segment
+// are Restrict on purpose (the PocketVerse lesson): nothing pointing at stored data
+// may disappear via cascade. Videos are soft-deleted (status = DELETED).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ChannelStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
+}
+
+enum VideoStatus {
+  RECORDING
+  FINALIZING
+  READY
+  FAILED
+  DELETED
+}
+
+enum Visibility {
+  PUBLIC
+  UNLISTED
+  PASSWORD
+  PRIVATE
+}
+
+enum PackStatus {
+  PENDING
+  UPLOADING
+  STORED
+  FAILED
+}
+
+enum SegmentLoc {
+  SPOOL
+  PACK
+}
+
+enum LabStatus {
+  PASS
+  FAIL
+  BLOCKED
+  INFO
+  NOT_RUN
+  RUNNING
+}
+
+model User {
+  id             String           @id
+  telegramUserId BigInt           @unique
+  firstName      String
+  lastName       String?
+  username       String?
+  photoUrl       String?
+  publicId       String           @unique
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  sessions       AuthSession[]
+  channels       StorageChannel[]
+  videos         Video[]
+}
+
+model AuthSession {
+  id         String   @id
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash  Bytes    @unique
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model StorageChannel {
+  id                String        @id
+  userId            String
+  user              User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  telegramChannelId BigInt        @unique
+  accessHash        BigInt?
+  title             String
+  status            ChannelStatus
+  botUsername       String
+  connectedAt       DateTime
+  disconnectedAt    DateTime?
+  videos            Video[]
+
+  @@index([userId, status])
+}
+
+model Video {
+  id               String         @id
+  ownerId          String
+  owner            User           @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  channelId        String
+  channel          StorageChannel @relation(fields: [channelId], references: [id], onDelete: Restrict)
+  title            String
+  status           VideoStatus
+  visibility       Visibility
+  shareIdHash      Bytes          @unique
+  shareIdEnc       Bytes
+  passwordHash     String?
+  uploadTokenHash  Bytes
+  durationUs       BigInt         @default(0)
+  width            Int?
+  height           Int?
+  videoCodec       String?
+  audioCodec       String?
+  initSegment      Bytes?
+  expectedSegments Int?
+  bitrateBps       Int
+  isLab            Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  finalizedAt      DateTime?
+  deletedAt        DateTime?
+  packs            Pack[]
+  segments         Segment[]
+
+  @@index([ownerId, createdAt])
+  @@index([ownerId, visibility, status])
+}
+
+model Pack {
+  id         String     @id
+  videoId    String
+  video      Video      @relation(fields: [videoId], references: [id], onDelete: Restrict)
+  packNo     Int
+  firstSeq   Int
+  lastSeq    Int
+  plainSize  Int
+  storageRef Json?
+  status     PackStatus
+  attempts   Int        @default(0)
+  uploadedAt DateTime?
+
+  @@unique([videoId, packNo])
+}
+
+model Segment {
+  videoId      String
+  video        Video      @relation(fields: [videoId], references: [id], onDelete: Restrict)
+  seq          Int
+  durationUs   Int
+  sizeBytes    Int
+  sha256       Bytes
+  location     SegmentLoc
+  packNo       Int?
+  offsetInPack Int?
+  createdAt    DateTime   @default(now())
+
+  @@id([videoId, seq])
+}
+
+model R2CacheEntry {
+  objectKey    String   @id
+  videoId      String
+  seq          Int
+  sizeBytes    Int
+  hits         Int      @default(0)
+  lastAccessAt DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  @@index([lastAccessAt])
+  @@index([videoId])
+}
+
+model BotEventLog {
+  id         String   @id
+  source     String
+  payload    Json
+  outcome    String
+  receivedAt DateTime @default(now())
+}
+
+model LabRun {
+  id          String    @id
+  testId      String
+  status      LabStatus
+  metrics     Json
+  environment Json
+  notes       String?
+  runBy       String?
+  startedAt   DateTime  @default(now())
+  finishedAt  DateTime?
+
+  @@index([testId, startedAt])
+}
+
+model LabManualAnswer {
+  questionId String   @id
+  value      String
+  updatedAt  DateTime @updatedAt
+}
+
+model UsageCounter {
+  key       String   @id
+  value     BigInt   @default(0)
+  updatedAt DateTime @updatedAt
+}

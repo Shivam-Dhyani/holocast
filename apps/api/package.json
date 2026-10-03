@@ -1,0 +1,39 @@
+{
+  "name": "@holocast/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "dev": "tsx watch src/server.ts",
+    "lint": "echo \"(lint: configured at M8)\"",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate:dev": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy"
+  },
+  "dependencies": {
+    "@holocast/shared": "workspace:*",
+    "@prisma/client": "^6.19.3",
+    "@shivam-dhyani/unified-storage": "link:../../../unified-storage",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "ioredis": "^6.0.0",
+    "pino": "^10.4.0",
+    "pino-http": "^11.0.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.6.4",
+    "@types/supertest": "^7.2.1",
+    "prisma": "6.19.3",
+    "supertest": "^7.3.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.15",
+    "vitest": "^5.0.3"
+  }
+}
