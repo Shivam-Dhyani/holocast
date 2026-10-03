@@ -58,6 +58,26 @@ of each section.
   ships the catalog + server-test run + results storage so the owner can run the
   Telegram tests and see PASS/FAIL (M4 done-when).
 
+## M5 recorder — Mediabunny verification (CLAUDE.md rule 3/8)
+
+Verified mediabunny **1.61.0** against the TDD §10.4 requirement before coding:
+- **Fragmented MP4 is supported**: `new Mp4OutputFormat({ fastStart: 'fragmented',
+  minimumFragmentDuration: 4 })` writes fMP4 monotonically, with `onFtyp`/`onMoov`
+  (init) and `onMoof` (per-fragment, with start timestamp) callbacks. Rule-8 gate
+  passes — no need to stop/ask.
+- **Keyframe-aligned ~4 s fragments**: `VideoEncodingConfig.keyFrameInterval` (s)
+  set to 4 so fragments start on keyframes.
+- **Frame acquisition (U-05/U-06)**: `MediaStreamVideoTrackSource(track, cfg, {
+  frameRate: 30 })` samples the MediaStreamTrack itself (not the page rAF) — the
+  TDD's preferred path for background-tab recording. `MediaStreamAudioTrackSource`
+  for audio. Both exposed behind our own `FrameSource` seam so an alternative
+  (MediaStreamTrackProcessor) can be swapped if a browser needs it.
+- **Streaming to the segmenter**: `AppendOnlyStreamTarget(new WritableStream<
+  Uint8Array>({ write }))` delivers ordered bytes to our box-parsing segmenter
+  (TDD §10.5), keeping the segmenter library-agnostic.
+- Codec support probed with mediabunny `canEncodeVideo('avc')` /
+  `canEncodeAudio('aac'|'opus')` plus WebCodecs `VideoEncoder.isConfigSupported`.
+
 ## Unknowns kept behind interfaces (TDD §17)
 - `BotEventSource` (U-03): botapi vs mtproto membership events — selected by
   `BOT_EVENT_SOURCE`.
