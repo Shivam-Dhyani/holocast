@@ -10,6 +10,8 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 
+import { attachUser, requireSameOrigin } from './auth/middleware.js';
+import { authRouter } from './auth/router.js';
 import { config } from './config.js';
 import { prisma } from './db.js';
 import { logger } from './logger.js';
@@ -35,6 +37,8 @@ export function createApp(): Express {
   app.use(pinoHttp({ logger }));
   app.use(cookieParser());
   app.use(express.json({ limit: '64kb' }));
+  app.use(attachUser);
+  app.use('/api', requireSameOrigin);
 
   // Health probe (TDD §12): db + redis liveness, storage/r2 configuration.
   app.get('/api/health', async (_req: Request, res: Response) => {
@@ -47,6 +51,8 @@ export function createApp(): Express {
       r2: r2Configured(),
     });
   });
+
+  app.use('/api', authRouter);
 
   const errorHandler: ErrorRequestHandler = (err, _req, res, _next) => {
     logger.error({ err }, 'unhandled error');
