@@ -1,0 +1,24 @@
+{
+  "name": "holocast",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Holocast — record your screen and share it instantly with a link, stored encrypted in your own Telegram.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.28.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "dev:api": "pnpm --filter @holocast/api dev",
+    "dev:web": "pnpm --filter @holocast/web dev",
+    "db:generate": "pnpm --filter @holocast/api prisma:generate",
+    "db:migrate": "pnpm --filter @holocast/api prisma:migrate:deploy"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}
