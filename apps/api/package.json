@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:integration": "vitest run --config vitest.integration.config.ts",
+    "lab:viewers": "tsx scripts/lab-viewers.ts",
     "dev": "tsx watch src/server.ts",
     "lint": "echo \"(lint: configured at M8)\"",
     "prisma:generate": "prisma generate",

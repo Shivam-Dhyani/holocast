@@ -34,6 +34,7 @@ import {
   type TgDeps,
 } from './server-tests.js';
 import { toJson } from './runs.js';
+import { runTrn01 } from './whisper.js';
 import { evaluate } from './thresholds.js';
 
 export const SERVER_RUNNABLE = new Set([
@@ -46,6 +47,7 @@ export const SERVER_RUNNABLE = new Set([
   'T-TG-07',
   'T-ONB-04',
   'T-INF-04',
+  'T-TRN-01',
 ]);
 
 interface LabAdapters {
@@ -89,6 +91,9 @@ async function buildLabAdapters(userId: string): Promise<LabAdapters> {
 async function dispatch(testId: string, userId: string): Promise<Metrics> {
   if (testId === 'T-INF-04') {
     return runInf04(prisma);
+  }
+  if (testId === 'T-TRN-01') {
+    return runTrn01();
   }
 
   const adapters = await buildLabAdapters(userId);
