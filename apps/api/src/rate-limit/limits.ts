@@ -28,7 +28,10 @@ function make(opts: {
   limit: number;
   keyGenerator?: (req: Request) => string;
 }): RequestHandler {
-  if (config.NODE_ENV === 'test') return (_req, _res, next: NextFunction) => next();
+  // Off under unit tests unless a suite (T-FAIR-01) explicitly enables them.
+  if (config.NODE_ENV === 'test' && process.env.RATE_LIMIT_ENABLED !== '1') {
+    return (_req, _res, next: NextFunction) => next();
+  }
   const limiter: RateLimitRequestHandler = rateLimit({
     windowMs: opts.windowMs,
     limit: opts.limit,

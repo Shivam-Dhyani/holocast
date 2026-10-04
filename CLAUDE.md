@@ -24,5 +24,12 @@ You are implementing **Phase 1** of Holocast and the `@shivam-dhyani/unified-sto
 - Small commits with clear messages referencing IDs, e.g. `feat(ingest): segment PUT idempotency (FR-REC-06)`.
 - Keep `docs/VERSIONS.md` updated with exact dependency versions.
 
+## Work log (required)
+A dated work log lives in `docs/logs/<YYYY-MM-DD>.md` — one file per day, filename = the date.
+1. **Before starting any change**, read the most recent file in `docs/logs/` to see what was last done and where things stand.
+2. **After finishing a coding task** (with its commit), append an entry to **today's** log file, creating it if missing.
+3. Write entries to be scanned quickly by both Claude and a human: group under milestone/area headings, one short bullet per task with the commit short-sha, the requirement IDs touched (FR-*/T-*/§), and a terse what/why. Many tasks in a day stay as short bullets under that day's headings.
+4. The log covers **both repos** (holocast + `unified-storage`); tag package work with `[pkg]`.
+
 ## Definition of done for Phase 1
 All milestones M0–M8 done, the app works end-to-end on the production domain, the Lab lists every PRD §9 test, and the owner can export `PHASE1_RESULTS.md`. Then the owner runs the protocol (TDD §13.3) — M9.
