@@ -18,6 +18,21 @@ import { probe, type ProbeResult } from '../../lib/recorder/probe';
 import { recoverPendingUploads } from '../../lib/recorder/recovery';
 import { createStatsCollector, type StatsCollector } from '../../lib/recorder/stats';
 import { createUploader, lagSeconds, type Uploader } from '../../lib/recorder/uploader';
+import { runE2EEvaluation, submitRecordingStats } from '../../lib/lab/recording';
+
+/** Expected guided-recording length per Lab test (seconds) for duration-error %. */
+const LAB_EXPECTED_S: Record<string, number> = {
+  'T-REC-03': 300,
+  'T-REC-04': 3600,
+  'T-REC-05': 600,
+  'T-REC-06': 1800,
+  'T-REC-07': 240,
+};
+
+function shareIdFromUrl(shareUrl: string): string {
+  const parts = shareUrl.split('/').filter(Boolean);
+  return parts[parts.length - 1] ?? '';
+}
 
 type Phase = 'checking' | 'unsupported' | 'idle' | 'starting' | 'recording' | 'finalizing' | 'ready' | 'error';
 
@@ -54,8 +69,11 @@ export function RecordClient() {
 
   const session = useRef<Session | null>(null);
   const timers = useRef<{ tick?: ReturnType<typeof setInterval>; start?: number }>({});
+  // Guided Lab recordings carry ?lab=<T-REC-id>; stats are auto-submitted (admin-only).
+  const labTestId = useRef<string | null>(null);
 
   useEffect(() => {
+    labTestId.current = new URLSearchParams(window.location.search).get('lab');
     void recoverPendingUploads().catch(() => {});
     probe()
       .then((p) => {
@@ -91,6 +109,22 @@ export function RecordClient() {
       });
       await deleteVideoStorage(s.manifest.videoId).catch(() => {});
       setPhase('ready');
+
+      // FR-LAB-05: guided Lab recordings auto-submit §10.8 stats to the Lab (admin-only).
+      const testId = labTestId.current;
+      if (testId) {
+        const segDurs = s.stats.segmentDurationsUs();
+        const shareId = shareIdFromUrl(s.manifest.shareUrl);
+        void (testId === 'T-REC-03'
+          ? runE2EEvaluation(shareId, stats, segDurs)
+          : submitRecordingStats(testId, stats, {
+              segmentDurationsUs: segDurs,
+              expectedDurationS: LAB_EXPECTED_S[testId],
+              allSegmentsUploaded: true,
+              playable: true,
+            })
+        ).catch(() => {});
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Finalize failed');
       setPhase('error');

@@ -100,4 +100,24 @@ Verified mediabunny **1.61.0** against the TDD §10.4 requirement before coding:
 - Channel access resolution (U-04): in the unified-storage Telegram backend.
 - Frame acquisition (U-05/06): recorder, built in M5.
 
-Last updated: 2026-10-03
+## M8c — browser Lab runners (`apps/web/lib/lab/`)
+- **First-frame timing** uses `HTMLVideoElement.requestVideoFrameCallback` where the
+  browser exposes it (recorded in the submission as `frameMethod`), falling back to the
+  `playing` / `seeked` events (Firefox lacks rVFC). This matches TDD §9.4's "record
+  which" note for T-PLY-01/03.
+- **Per-browser tests (T-PLY-04, T-INF-05)** whose threshold needs all four browsers
+  are accumulated client-side: before submitting, the runner reads the latest run's
+  `browsersOk` via `GET /api/lab/runs?testId=` and submits the union with the current
+  browser. The Nth browser's submission therefore carries the full set and evaluates
+  PASS — no change to the stateless `/api/lab/results` evaluator was needed.
+- **FR-LAB-05 admin stats submit** is driven by `?lab=<T-REC-id>` on `/record` (set by
+  the Lab's guided-recording buttons). On finalize the recorder maps §10.8 stats to the
+  test's metric keys and POSTs to `/api/lab/results`; the endpoint rejects non-admins, so
+  `submitLabResult` swallows 401/403 and it is a silent no-op for ordinary users.
+- **Honest gaps:** `maxEncoderQueue` (T-REC-04) and per-frame `maxFrozenMs` (T-REC-05)
+  are only emitted when Mediabunny exposes a real sample (it does not in 1.61.0 — see the
+  M5 note); T-REC-05 falls back to the longest hidden→visible span from the visibility
+  timeline as a documented proxy. A missing sample makes the threshold FAIL rather than
+  pass on a fabricated value.
+
+Last updated: 2026-10-04

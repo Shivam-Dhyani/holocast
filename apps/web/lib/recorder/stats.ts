@@ -56,6 +56,8 @@ export interface StatsCollector {
   sampleLag: (lagS: number) => void;
   onVisibility: (state: 'hidden' | 'visible') => void;
   sampleMemory: () => void;
+  /** Per-segment durations (µs) in order; the Lab uses these for non-final seg bounds. */
+  segmentDurationsUs: () => number[];
   finish: (final: {
     chosenVideoCodec: string;
     chosenAudioCodec: string;
@@ -76,6 +78,7 @@ export function createStatsCollector(browser: unknown): StatsCollector {
     onSegment: (durationUs) => void durations.push(durationUs),
     sampleLag: (lagS) => void lags.push(lagS),
     onVisibility: (state) => void visibilityTimeline.push({ state, atMs: Math.round(performance.now() - startedAt) }),
+    segmentDurationsUs: () => [...durations],
     sampleMemory: () => {
       const mem = (performance as Performance & { memory?: { usedJSHeapSize: number } }).memory;
       if (mem) memorySamplesBytes.push(mem.usedJSHeapSize);
