@@ -8,6 +8,8 @@ import { requireAdmin } from '../auth/middleware.js';
 import { config, isAdmin } from '../config.js';
 import { prisma } from '../db.js';
 import { newId } from '../ids.js';
+import { logger } from '../logger.js';
+import { getQueue, QUEUE, type DeleteVideoJob } from '../queues.js';
 import { latestRunByTest, toJson } from './runs.js';
 import { buildReportJson, buildReportMarkdown } from './report.js';
 import { startServerTest, SERVER_RUNNABLE } from './runner.js';
@@ -112,6 +114,14 @@ labRouter.get('/runs', requireAdmin, async (req: Request, res: Response) => {
   res.json({ runs });
 });
 
+// GET /api/lab/manual — saved manual answers for prefilling the form (FR-LAB-06).
+labRouter.get('/manual', requireAdmin, async (_req: Request, res: Response) => {
+  const rows = await prisma.labManualAnswer.findMany();
+  const answers: Record<string, string> = {};
+  for (const r of rows) answers[r.questionId] = r.value;
+  res.json({ answers });
+});
+
 // PUT /api/lab/manual/:questionId — manual questionnaire answers (FR-LAB-06).
 labRouter.put('/manual/:questionId', requireAdmin, async (req: Request, res: Response) => {
   const parsed = ManualAnswerRequest.safeParse(req.body);
@@ -140,8 +150,19 @@ labRouter.get('/report.md', requireAdmin, async (_req: Request, res: Response) =
 });
 
 // POST /api/lab/cleanup — remove synthetic Lab data (FR-LAB-08).
-// Server tests delete their packs inline; this clears isLab videos (M7+) and run history.
+// Marks every isLab video DELETED and enqueues the delete-video job (removes packs from
+// Telegram + R2 + spool, no cascade deletes), then clears the Lab run history. Server
+// tests already delete their own synthetic packs inline.
 labRouter.post('/cleanup', requireAdmin, async (_req: Request, res: Response) => {
-  const labVideos = await prisma.video.count({ where: { isLab: true } });
-  res.json({ note: 'server-test packs are deleted inline; isLab video cleanup lands with M7 video APIs', labVideos });
+  const videos = await prisma.video.findMany({ where: { isLab: true, status: { not: 'DELETED' } }, select: { id: true } });
+  for (const v of videos) {
+    await prisma.video.update({ where: { id: v.id }, data: { status: 'DELETED', deletedAt: new Date() } });
+    try {
+      await getQueue(QUEUE.deleteVideo).add('delete-video', { videoId: v.id } satisfies DeleteVideoJob);
+    } catch (err) {
+      logger.warn({ err, videoId: v.id }, 'lab cleanup: could not enqueue delete-video (Redis down?)');
+    }
+  }
+  const runs = await prisma.labRun.deleteMany({});
+  res.json({ note: 'Lab videos marked DELETED and queued for storage removal; run history cleared.', labVideos: videos.length, runsCleared: runs.count });
 });

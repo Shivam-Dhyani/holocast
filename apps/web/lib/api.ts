@@ -143,3 +143,12 @@ export const getLabTests = (): Promise<{ tests: LabTest[] }> => apiFetch('/api/l
 
 export const runLabTest = (id: string): Promise<{ runId: string; status: string }> =>
   apiFetch(`/api/lab/run/${id}`, { method: 'POST' });
+
+export const getManualAnswers = (): Promise<{ answers: Record<string, string> }> =>
+  apiFetch('/api/lab/manual');
+
+export const saveManualAnswer = (questionId: string, value: string): Promise<void> =>
+  apiFetch(`/api/lab/manual/${questionId}`, { method: 'PUT', body: JSON.stringify({ value }) });
+
+export const cleanupLab = (): Promise<{ note: string; labVideos: number }> =>
+  apiFetch('/api/lab/cleanup', { method: 'POST' });
